@@ -3,8 +3,6 @@ package image
 import (
 	"os"
 	"strings"
-
-	"github.com/BourgeoisBear/rasterm"
 )
 
 type Caps int
@@ -21,20 +19,19 @@ const (
 
 // Detect returns the image-rendering backend.
 //
-// Auto-detection currently returns half-block (CapsNone) for terminals that
-// aren't a known native-Kitty / native-iTerm2 host. Native pixel protocols
-// (iTerm2 OSC 1337, Kitty graphics) don't compose reliably with bubbletea's
-// frame compositor — see charmbracelet/bubbletea#163 — so we don't try to
-// auto-select them in mixed environments (WezTerm, ConPTY-on-Windows, etc).
+// Default (HYMN_GFX unset) is always sextant. Native graphics protocols
+// (iTerm2 OSC 1337, Kitty graphics, sixel) don't compose with bubbletea's
+// frame compositor — see charmbracelet/bubbletea#163 — so we never auto-
+// select them; users have to opt in via HYMN_GFX explicitly.
 //
-// HYMN_GFX overrides detection. Recognized values:
+// Recognized HYMN_GFX values:
 //
-//   sextant (default) — 2×3 sub-pixels per cell, Symbols for Legacy Computing
-//   halfblock         — 2 sub-pixels per cell (▀); fallback for fonts lacking sextants
-//   quadrant          — 2×2 sub-pixels per cell (▘▝▖▗); universal font support
-//   dither            — sextant + Floyd-Steinberg error diffusion (smoother gradients)
-//   kitty / iterm2 / sixel — opt-in native graphics protocols (fragile; see #163)
-//   off / none         — alias for sextant
+//   sextant (default)   2×3 sub-pixels per cell, Symbols for Legacy Computing
+//   halfblock           2 sub-pixels per cell (▀); fallback for fonts lacking sextants
+//   quadrant            2×2 sub-pixels per cell (▘▝▖▗); universal font support
+//   dither              sextant + Floyd-Steinberg error diffusion
+//   kitty/iterm2/sixel  opt-in native graphics protocols (fragile)
+//   off/none            alias for sextant
 func Detect() Caps {
 	switch strings.ToLower(os.Getenv("HYMN_GFX")) {
 	case "kitty":
@@ -49,14 +46,6 @@ func Detect() Caps {
 		return CapsQuadrant
 	case "dither", "sextant-dither":
 		return CapsSextantDither
-	case "sextant", "none", "off":
-		return CapsNone
-	}
-	if rasterm.IsKittyCapable() {
-		return CapsKitty
-	}
-	if rasterm.IsItermCapable() {
-		return CapsITerm2
 	}
 	return CapsNone
 }
