@@ -1,8 +1,6 @@
 package ui
 
 import (
-	"strings"
-
 	"github.com/charmbracelet/lipgloss"
 
 	hymnimg "hymn/internal/image"
@@ -78,15 +76,6 @@ func (a artModel) View() string {
 			Render("♪")
 		return a.theme.Border.Render(placeholder)
 	}
-	// Center the rendered art inside the inner box (it may be smaller than h).
 	body := hymnimg.Pad(a.rendered, innerH)
-	// Crude width-fitting: lipgloss can't measure ANSI half-block strings well,
-	// so we just render the box with the raw content and rely on it being sized
-	// to (innerW, innerH).
-	lines := strings.Split(body, "\n")
-	for i := range lines {
-		// no-op: keep raw lines; ANSI escapes are preserved.
-		_ = lines[i]
-	}
 	return a.theme.Border.Render(body)
 }

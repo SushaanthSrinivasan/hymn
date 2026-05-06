@@ -2,18 +2,20 @@ package image
 
 import (
 	stdimg "image"
+	"image/color"
 	"strconv"
 	"strings"
 )
 
 // RenderHalfBlock renders an image as ANSI half-block characters, two pixels
-// per cell (top = foreground, bottom = background, glyph = "▀"). The image is
-// resized to w cells wide × 2h pixels tall first.
-func RenderHalfBlock(src stdimg.Image, w, h int) string {
+// per cell (top = foreground, bottom = background, glyph = "▀"). Source is
+// fit into a w × 2h sub-pixel grid preserving aspect ratio; bg fills any
+// letterbox/pillarbox bars.
+func RenderHalfBlock(src stdimg.Image, w, h int, bg color.Color) string {
 	if w <= 0 || h <= 0 {
 		return ""
 	}
-	img := Resize(src, w, 2*h)
+	img := FitForGrid(src, w, 2*h, 1, 1, bg)
 	bounds := img.Bounds()
 	width := bounds.Dx()
 	height := bounds.Dy()

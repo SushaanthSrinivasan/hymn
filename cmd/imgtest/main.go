@@ -1,4 +1,4 @@
-coo// Throwaway smoke test for the image pipeline.
+// Throwaway smoke test for the image pipeline.
 // Usage: go run ./cmd/imgtest [width] [height]
 // Fetches a known YT thumbnail and prints the half-block render.
 package main

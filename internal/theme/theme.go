@@ -1,6 +1,26 @@
 package theme
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"image/color"
+	"strconv"
+
+	"github.com/charmbracelet/lipgloss"
+)
+
+// RGBA parses a #rrggbb lipgloss.Color into an image/color.RGBA. Falls back
+// to opaque black on parse failure (e.g. named colors or empty values).
+func RGBA(c lipgloss.Color) color.RGBA {
+	s := string(c)
+	if len(s) == 7 && s[0] == '#' {
+		r, e1 := strconv.ParseUint(s[1:3], 16, 8)
+		g, e2 := strconv.ParseUint(s[3:5], 16, 8)
+		b, e3 := strconv.ParseUint(s[5:7], 16, 8)
+		if e1 == nil && e2 == nil && e3 == nil {
+			return color.RGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: 255}
+		}
+	}
+	return color.RGBA{A: 255}
+}
 
 // Catppuccin Mocha palette — single theme for v0.1.
 type Theme struct {

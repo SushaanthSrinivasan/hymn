@@ -43,6 +43,7 @@ type Model struct {
 func NewModel(db *store.Store, p player.Client, yt *ytdlp.Client, cacheDir string) Model {
 	t := theme.Mocha()
 	r := hymnimg.NewRenderer()
+	r.SetBackground(theme.RGBA(t.Base))
 	return Model{
 		db:         db,
 		player:     p,

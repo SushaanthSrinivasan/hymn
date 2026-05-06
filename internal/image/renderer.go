@@ -2,10 +2,13 @@ package image
 
 import (
 	"bytes"
+	"encoding/base64"
+	"fmt"
 	stdimg "image"
+	"image/color"
 	"image/color/palette"
 	stddraw "image/draw"
-	_ "image/jpeg"
+	"image/jpeg"
 	_ "image/png"
 	"strings"
 
@@ -15,13 +18,22 @@ import (
 
 type Renderer struct {
 	caps Caps
+	bg   color.Color // letterbox color for non-square sources
 }
 
 func NewRenderer() *Renderer {
-	return &Renderer{caps: Detect()}
+	return &Renderer{caps: Detect(), bg: color.Black}
 }
 
 func (r *Renderer) Caps() Caps { return r.caps }
+
+// SetBackground sets the letterbox/pillarbox fill color used when the source
+// image's aspect ratio doesn't match the target panel.
+func (r *Renderer) SetBackground(c color.Color) {
+	if c != nil {
+		r.bg = c
+	}
+}
 
 // Render decodes the supplied bytes (JPEG, PNG, or WebP) and returns a string
 // suitable for direct printing into a terminal cell box of (w,h) cells.
@@ -43,12 +55,20 @@ func (r *Renderer) Render(data []byte, w, h int) (string, error) {
 		}
 		return buf.String(), nil
 	case CapsITerm2:
+		// rasterm.ItermWriteImage doesn't pass cell-size params, so the
+		// terminal sizes the image from raw pixels and the layout collapses.
+		// Build the escape directly with width=Ncells;height=Mcells so the
+		// image is constrained to the panel.
 		px := Resize(img, w*8, h*16)
-		var buf bytes.Buffer
-		if err := rasterm.ItermWriteImage(&buf, px); err != nil {
+		var jpg bytes.Buffer
+		if err := jpeg.Encode(&jpg, px, &jpeg.Options{Quality: 85}); err != nil {
 			break
 		}
-		return buf.String(), nil
+		b64 := base64.StdEncoding.EncodeToString(jpg.Bytes())
+		return fmt.Sprintf(
+			"\x1b]1337;File=inline=1;width=%d;height=%d;preserveAspectRatio=1:%s\x07",
+			w, h, b64,
+		), nil
 	case CapsSixel:
 		px := Resize(img, w*8, h*16)
 		pal := stdimg.NewPaletted(px.Bounds(), palette.Plan9)
@@ -58,9 +78,18 @@ func (r *Renderer) Render(data []byte, w, h int) (string, error) {
 			break
 		}
 		return buf.String(), nil
+	case CapsHalfBlock:
+		return RenderHalfBlock(img, w, h, r.bg), nil
+	case CapsQuadrant:
+		return RenderQuadrant(img, w, h, r.bg), nil
+	case CapsSextantDither:
+		return RenderSextantDither(img, w, h, r.bg), nil
 	}
-	// Fallback (and recovery from any of the above failing).
-	return RenderHalfBlock(img, w, h), nil
+	// Default ANSI text path: sextants give 3× the apparent vertical
+	// resolution of half-blocks. Cascadia Mono / JetBrains Mono support the
+	// glyphs since 2021. Aspect ratio preserved via FitForGrid; bars fill
+	// with r.bg.
+	return RenderSextant(img, w, h, r.bg), nil
 }
 
 // Pad ensures the rendered art is at least h lines tall (centered for
