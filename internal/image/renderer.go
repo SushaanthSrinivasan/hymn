@@ -45,6 +45,16 @@ func (r *Renderer) Render(data []byte, w, h int) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// For ANSI text rendering, center-crop the source to the panel's visual
+	// aspect (w cells wide × 2h "half-cells" tall — cells are roughly 1:2 W:H
+	// in most fonts). This makes square album covers fill exactly and trims
+	// the edges of 16:9 video thumbnails so they sit like cover art instead
+	// of letterboxing into a square panel. Native protocol paths handle
+	// their own sizing.
+	switch r.caps {
+	case CapsNone, CapsHalfBlock, CapsQuadrant, CapsSextantDither:
+		img = CenterCropAspect(img, w, 2*h)
+	}
 	switch r.caps {
 	case CapsKitty:
 		// Kitty: target a pixel size that fits the cell box.
